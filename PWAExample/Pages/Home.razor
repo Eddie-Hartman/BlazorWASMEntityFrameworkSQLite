@@ -1,0 +1,94 @@
+﻿@page "/"
+@using BlazorWASMEntityFrameworkSQLite
+@using Microsoft.EntityFrameworkCore
+@using PWAExampleData.Data
+
+@inject BWEFSFactory<PWAExampleDbContext> Factory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Home</PageTitle>
+
+<h1>ToDos</h1>
+
+@if (todos is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (ToDo todo in todos)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @todo.Title
+                <button @onclick="() => Delete(todo)" class="btn btn-primary my-2">Delete</button>
+            </li>
+        }
+    </ul>
+}
+
+<input @bind-value="newTodo" @bind-value:event="oninput" @onkeydown="@(args => args.Key == "Enter" ? Add() : null!)" placeholder="New ToDo" class="form-control my-2"/>
+<button @onclick="Add" disabled="@string.IsNullOrWhiteSpace(newTodo)" class="btn btn-primary my-2">Add ToDo</button>
+
+<button @onclick="@(async () => NavigationManager.NavigateTo((await Factory.GetDownloadUrlAsync())!))" class="btn btn-primary my-2">Download Backup</button>
+
+<InputFile OnChange="@(e => file = e.File)" class="my-2">Select file to restore</InputFile>
+<button @onclick="Restore" disabled="@(file is null)" class="btn btn-primary my-2">Restore</button>
+
+@code{
+    List<ToDo>? todos;
+    string newTodo = "";
+
+    IBrowserFile? file;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        todos = await context.ToDos.ToListAsync();
+    }
+
+    async Task Delete(ToDo todo)
+    {
+        todos!.Remove(todo);
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        context.ToDos.Remove(todo);
+        await context.SaveChangesAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task Add()
+    {
+        ToDo todo = new()
+        {
+            Title = newTodo
+        };
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        context.ToDos.Add(todo);
+        await context.SaveChangesAsync();
+
+        newTodo = "";
+
+        todos = await context.ToDos.ToListAsync();
+    }
+
+    async Task Restore()
+    {
+        using Stream stream = file!.OpenReadStream(maxAllowedSize: 10_000_000); // 10MB limit
+        using MemoryStream memoryStream = new();
+        await stream.CopyToAsync(memoryStream);
+        byte[] fileBytes = memoryStream.ToArray();
+
+        await Factory.ManualRestoreAsync(fileBytes);
+
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+
+        todos = await context.ToDos.ToListAsync();
+
+        file = null;
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

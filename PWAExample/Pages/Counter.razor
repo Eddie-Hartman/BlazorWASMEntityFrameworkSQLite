@@ -1,0 +1,41 @@
+﻿@page "/counter"
+@using BlazorWASMEntityFrameworkSQLite
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.Internal
+@using PWAExampleData.Data
+
+@inject BWEFSFactory<PWAExampleDbContext> factory
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+@if (counter is null)
+{
+    <p role="Status">Loading...</p>
+}
+else
+{
+    <p role="status">Current count: @counter.Count</p>
+    <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+}
+
+@code {
+    private PWAExampleData.Data.Counter? counter;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        PWAExampleDbContext context = await factory.CreateDbContextAsync();
+        counter = context.Counters.FirstOrDefault() ?? new();
+    }
+
+    private async Task IncrementCount()
+    {
+        PWAExampleDbContext context = await factory.CreateDbContextAsync();
+        counter!.Count++;
+        context.Counters.Update(counter);
+        await context.SaveChangesAsync();
+    }
+
+}
