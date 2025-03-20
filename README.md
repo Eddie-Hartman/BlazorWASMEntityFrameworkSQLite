@@ -9,12 +9,13 @@ This works by creating a database in the [Emscripten File System API](https://em
 Take a look at the PWAExample code to get familiar with everything.
 
 1. Import the nuget package to your Blazor WASM project.
-2. Add `builder.Services.AddBWEFSDbContextFactory<YOURDBCONTEXT>();` in your program.cs to set up dependency injection.
-3. Replace `YOURDBCONTEXT` with your db context class above.
-4. For default settings, that's it in terms of setup.
+2. Add `<WasmBuildNative>true</WasmBuildNative>` into the property group in the .csproj file. See the PWAExample.csproj file for an example.
+3. Add `builder.Services.AddBWEFSDbContextFactory<YOURDBCONTEXT>();` in your program.cs to set up dependency injection.
+4. Replace `YOURDBCONTEXT` with your db context class above.
+5. For default settings, that's it in terms of setup.
 
 Optional:
-To avoid getting warnings on build, add `<NoWarn>WASM0001</NoWarn>` to a `<PropertyGroup>` in your Blazor WASM project.
+To avoid getting warnings on build, add `<NoWarn>WASM0001</NoWarn>` to a `<PropertyGroup>` in your Blazor WASM project. Right below where you added `<WasmBuildNative>true</WasmBuildNative>` is fine.
 
 **IMPORTANT** If you are NOT using entity framework core migrations, be sure to set the `useMigrations` parameter to false in the `AddBWEFSDbContextFactory` method. This uses the `EnsureCreated()` method instead of migrations to make sure the database is created.
 
