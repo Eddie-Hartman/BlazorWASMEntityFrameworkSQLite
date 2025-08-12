@@ -5,7 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageId>BlazorWASMEntityFrameworkSQLite</PackageId>
-        <Version>1.0.0</Version>
+        <Version>1.1.0</Version>
         <Authors>Eddie Hartman</Authors>
         <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/Eddie-Hartman/BlazorWASMEntityFrameworkSQLite</PackageProjectUrl>
@@ -13,21 +13,25 @@
         <PackageTags>sqlite;sql;entity framework;ef;blazor;wasm;blazor wasm;</PackageTags>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.1" />
+    </ItemGroup>
+
 
     <ItemGroup>
-        <SupportedPlatform Include="browser"/>
+        <SupportedPlatform Include="browser" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.1" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.*" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.*" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.*" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="8.*" />
     </ItemGroup>
 
 </Project>
