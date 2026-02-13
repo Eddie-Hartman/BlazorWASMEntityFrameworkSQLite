@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using BlazorWASMEntityFrameworkSQLite
 @using Microsoft.EntityFrameworkCore
 @using PWAExampleData.Data
@@ -10,85 +10,330 @@
 
 <h1>ToDos</h1>
 
-@if (todos is null)
+@if (!loaded)
 {
     <p>Loading...</p>
 }
 else
 {
-    <ul class="list-group">
-        @foreach (ToDo todo in todos)
-        {
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                @todo.Title
-                <button @onclick="() => Delete(todo)" class="btn btn-primary my-2">Delete</button>
-            </li>
-        }
-    </ul>
+    <div class="row g-2 mb-3">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Total</div>
+                    <div class="fs-4 fw-semibold">@todos.Count</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Open</div>
+                    <div class="fs-4 fw-semibold">@OpenCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Completed</div>
+                    <div class="fs-4 fw-semibold">@CompletedCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Due in 48h</div>
+                    <div class="fs-4 fw-semibold">@DueSoonCount</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Add Task</h5>
+            <div class="mb-2">
+                <input @bind-value="newTitle" @bind-value:event="oninput" placeholder="Task title" class="form-control" />
+            </div>
+            <div class="mb-2">
+                <textarea @bind="newNotes" placeholder="Notes (optional)" class="form-control"></textarea>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Priority</label>
+                    <select @bind="newPriority" class="form-select">
+                        <option value="1">Low</option>
+                        <option value="2">Medium</option>
+                        <option value="3">High</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Due date (optional)</label>
+                    <input type="datetime-local" @bind="newDueDateLocal" class="form-control" />
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button @onclick="Add" disabled="@string.IsNullOrWhiteSpace(newTitle)" class="btn btn-primary w-100">Add Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input @bind-value="search" @bind-value:event="oninput" placeholder="Search title or notes" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <select @bind="filter" class="form-select">
+                        <option value="all">All</option>
+                        <option value="open">Open</option>
+                        <option value="done">Completed</option>
+                        <option value="dueSoon">Due in 48h</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button @onclick="ClearCompleted" disabled="@(!todos.Any(t => t.IsCompleted))" class="btn btn-outline-secondary w-100">Clear Completed</button>
+                    <button @onclick="Refresh" class="btn btn-outline-primary w-100">Refresh</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body d-flex gap-2 flex-wrap">
+            <button @onclick="DownloadBackup" class="btn btn-primary">Download Backup</button>
+            <InputFile OnChange="OnFileChange" class="form-control" style="max-width: 320px;" />
+            <button @onclick="Restore" disabled="@(file is null)" class="btn btn-warning">Restore Backup</button>
+        </div>
+    </div>
+
+    @if (!FilteredTodos.Any())
+    {
+        <p class="text-muted">No tasks match this filter.</p>
+    }
+    else
+    {
+        <ul class="list-group">
+            @foreach (ToDo todo in FilteredTodos)
+            {
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold @(todo.IsCompleted ? "text-decoration-line-through text-muted" : "")">@todo.Title</div>
+                            @if (!string.IsNullOrWhiteSpace(todo.Notes))
+                            {
+                                <div class="small text-muted">@todo.Notes</div>
+                            }
+                            <div class="small mt-1">
+                                <span class="badge @GetPriorityClass(todo.Priority)">@GetPriorityLabel(todo.Priority)</span>
+                                @if (todo.DueDateUtc is not null)
+                                {
+                                    <span class="ms-2">Due: @todo.DueDateUtc.Value.ToLocalTime().ToString("g")</span>
+                                }
+                                <span class="ms-2 text-muted">Created: @todo.CreatedAtUtc.ToLocalTime().ToString("g")</span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button @onclick="() => ToggleCompletion(todo)" class="btn btn-sm btn-outline-success">
+                                @(todo.IsCompleted ? "Reopen" : "Done")
+                            </button>
+                            <button @onclick="() => Delete(todo)" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
 }
 
-<input @bind-value="newTodo" @bind-value:event="oninput" @onkeydown="@(args => args.Key == "Enter" ? Add() : null!)" placeholder="New ToDo" class="form-control my-2"/>
-<button @onclick="Add" disabled="@string.IsNullOrWhiteSpace(newTodo)" class="btn btn-primary my-2">Add ToDo</button>
+@code {
+    private List<ToDo> todos = [];
 
-<button @onclick="@(async () => NavigationManager.NavigateTo((await Factory.GetDownloadUrlAsync())!))" class="btn btn-primary my-2">Download Backup</button>
+    private bool loaded;
 
-<InputFile OnChange="@(e => file = e.File)" class="my-2">Select file to restore</InputFile>
-<button @onclick="Restore" disabled="@(file is null)" class="btn btn-primary my-2">Restore</button>
+    private string newTitle = "";
+    private string newNotes = "";
+    private int newPriority = 2;
+    private DateTime? newDueDateLocal;
 
-@code{
-    List<ToDo>? todos;
-    string newTodo = "";
+    private string filter = "all";
+    private string search = "";
 
-    IBrowserFile? file;
+    private IBrowserFile? file;
+
+    private int CompletedCount => todos.Count(t => t.IsCompleted);
+    private int OpenCount => todos.Count(t => !t.IsCompleted);
+    private int DueSoonCount => todos.Count(IsDueSoon);
+
+    private IEnumerable<ToDo> FilteredTodos =>
+        todos
+            .Where(MatchesFilter)
+            .Where(MatchesSearch)
+            .OrderBy(t => t.IsCompleted)
+            .ThenByDescending(t => t.Priority)
+            .ThenBy(t => t.DueDateUtc ?? DateTime.MaxValue)
+            .ThenByDescending(t => t.CreatedAtUtc);
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        
+        await LoadAsync();
+        loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
         PWAExampleDbContext context = await Factory.CreateDbContextAsync();
         todos = await context.ToDos.ToListAsync();
     }
 
-    async Task Delete(ToDo todo)
+    private async Task Add()
     {
-        todos!.Remove(todo);
-        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
-        context.ToDos.Remove(todo);
-        await context.SaveChangesAsync();
+        string title = newTitle.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
 
-        await InvokeAsync(StateHasChanged);
-    }
-
-    async Task Add()
-    {
         ToDo todo = new()
         {
-            Title = newTodo
+            Title = title,
+            Notes = newNotes.Trim(),
+            Priority = newPriority,
+            IsCompleted = false,
+            CreatedAtUtc = DateTime.UtcNow,
+            DueDateUtc = newDueDateLocal?.ToUniversalTime()
         };
+
         PWAExampleDbContext context = await Factory.CreateDbContextAsync();
         context.ToDos.Add(todo);
         await context.SaveChangesAsync();
 
-        newTodo = "";
+        newTitle = "";
+        newNotes = "";
+        newPriority = 2;
+        newDueDateLocal = null;
 
-        todos = await context.ToDos.ToListAsync();
+        await LoadAsync();
     }
 
-    async Task Restore()
+    private async Task ToggleCompletion(ToDo todo)
     {
-        using Stream stream = file!.OpenReadStream(maxAllowedSize: 10_000_000); // 10MB limit
-        using MemoryStream memoryStream = new();
-        await stream.CopyToAsync(memoryStream);
-        byte[] fileBytes = memoryStream.ToArray();
-
-        await Factory.ManualRestoreAsync(fileBytes);
+        todo.IsCompleted = !todo.IsCompleted;
 
         PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        context.ToDos.Update(todo);
+        await context.SaveChangesAsync();
 
-        todos = await context.ToDos.ToListAsync();
+        await LoadAsync();
+    }
 
+    private async Task Delete(ToDo todo)
+    {
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        context.ToDos.Remove(todo);
+        await context.SaveChangesAsync();
+
+        await LoadAsync();
+    }
+
+    private async Task ClearCompleted()
+    {
+        PWAExampleDbContext context = await Factory.CreateDbContextAsync();
+        List<ToDo> completed = await context.ToDos.Where(t => t.IsCompleted).ToListAsync();
+
+        if (completed.Count == 0)
+        {
+            return;
+        }
+
+        context.ToDos.RemoveRange(completed);
+        await context.SaveChangesAsync();
+
+        await LoadAsync();
+    }
+
+    private async Task Refresh()
+    {
+        await LoadAsync();
+    }
+
+    private async Task DownloadBackup()
+    {
+        string? url = await Factory.GetDownloadUrlAsync();
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            NavigationManager.NavigateTo(url, forceLoad: true);
+        }
+    }
+
+    private void OnFileChange(InputFileChangeEventArgs e)
+    {
+        file = e.File;
+    }
+
+    private async Task Restore()
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        using Stream stream = file.OpenReadStream(maxAllowedSize: 10_000_000);
+        using MemoryStream memoryStream = new();
+        await stream.CopyToAsync(memoryStream);
+
+        await Factory.ManualRestoreAsync(memoryStream.ToArray());
         file = null;
 
-        await InvokeAsync(StateHasChanged);
+        await LoadAsync();
     }
+
+    private bool MatchesFilter(ToDo todo) => filter switch
+    {
+        "open" => !todo.IsCompleted,
+        "done" => todo.IsCompleted,
+        "dueSoon" => IsDueSoon(todo),
+        _ => true
+    };
+
+    private bool MatchesSearch(ToDo todo)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return true;
+        }
+
+        return todo.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || todo.Notes.Contains(search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDueSoon(ToDo todo)
+    {
+        if (todo.IsCompleted || todo.DueDateUtc is null)
+        {
+            return false;
+        }
+
+        DateTime now = DateTime.UtcNow;
+        DateTime soon = now.AddHours(48);
+        return todo.DueDateUtc >= now && todo.DueDateUtc <= soon;
+    }
+
+    private static string GetPriorityLabel(int priority) => priority switch
+    {
+        3 => "High",
+        2 => "Medium",
+        _ => "Low"
+    };
+
+    private static string GetPriorityClass(int priority) => priority switch
+    {
+        3 => "bg-danger",
+        2 => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
 }
